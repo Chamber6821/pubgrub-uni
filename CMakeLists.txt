@@ -9,7 +9,7 @@ include(FetchContent)
 FetchContent_Declare(
         Reactions
         GIT_REPOSITORY https://github.com/Chamber6821/Reactions.git
-        GIT_TAG 0.0.4
+        GIT_TAG 0.0.5
 )
 
 FetchContent_Declare(
