@@ -56,11 +56,11 @@ class ic_record<pubgrub::incompatibility<Requirement, Allocator>> {
     ic_by_key_seq_vec _by_key{_alloc};
 
     auto _seq_for_key(const key_type& key_) const noexcept {
-        return sr::partition_point(_by_key, [&](auto&& el) { return el.key < key_; });
+        return sr::partition_point(_by_key, [&](auto&& el) { return key_ > el.key; });
     }
 
     auto _seq_for_key(const key_type& key_) noexcept {
-        return sr::partition_point(_by_key, [&](auto&& el) { return el.key < key_; });
+        return sr::partition_point(_by_key, [&](auto&& el) { return key_ > el.key; });
     }
 
     const ic_type& _add_ic_to_err(std::list<ic_type>& ics, const ic_type& ic) noexcept {
