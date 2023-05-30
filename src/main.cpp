@@ -147,6 +147,4 @@ int main() {
         ">"
     )
         ->start(flag);
-
-    make<RcNothrow>(make<Solution>(profile, repo))->result(make<CmEmpty>())->print(std::cout);
 }
