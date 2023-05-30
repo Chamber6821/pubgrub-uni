@@ -129,6 +129,7 @@ struct failure_writer {
 
     [[noreturn]] void _die() {
         assert(false && "We hit an unknown edge case while generating the dependency resolution error report. Please report this as a bug!");
+        std::terminate();
     }
 
     bool is_derived(const ic_type& ic) {
