@@ -6,6 +6,7 @@
 
 #include <format>
 #include <pubgrub/interval.hpp>
+#include <sstream>
 
 template <>
 struct std::formatter<pubgrub::interval_set<int>> : std::formatter<std::string> {
