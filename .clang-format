@@ -3,7 +3,7 @@ Language:        Cpp
 # Access specifiers are best unindented, to keep them easy to spot:
 AccessModifierOffset: -4
 # Keep them together. Would be preferable to put all arguments on a new line
-AlignAfterOpenBracket: true
+#AlignAfterOpenBracket: true
 # Newline escapes should be aligned, they're prettier that way
 AlignEscapedNewlinesLeft: false
 # Same with OpenBracket alignment. No need for that.
@@ -32,7 +32,7 @@ BreakBeforeTernaryOperators: true
 BreakConstructorInitializersBeforeComma: true
 # Please, keep it readable:
 BinPackParameters: false
-BinPackArguments: false
+#BinPackArguments: false
 # Not a hard and fast rule, but yeah
 ColumnLimit:     100
 # Bleh
@@ -80,3 +80,8 @@ CommentPragmas:  '^ IWYU pragma:'
 ForEachMacros:   [ foreach, Q_FOREACH, BOOST_FOREACH ]
 SpaceBeforeParens: ControlStatements
 DisableFormat:   false
+
+AllowAllArgumentsOnNextLine: false
+AlignAfterOpenBracket: BlockIndent
+BinPackArguments: false
+BreakStringLiterals: false
