@@ -31,6 +31,9 @@ struct try_repr {
 };
 
 template <typename T>
+try_repr(T) -> try_repr<T>;
+
+template <typename T>
 concept debugger = requires(T& dbg, std::string_view strv) {
     {dbg.debug(strv)};
 };
