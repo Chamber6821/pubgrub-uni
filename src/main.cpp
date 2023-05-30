@@ -1,22 +1,24 @@
-#include "MemoryPackage.h"
-#include "MutableRepository.h"
-#include "Reactions/misc/owning/make.h"
-#include "Reqirement.h"
-#include "JsonProfile.h"
 #include "IntervalSetFormatter.h"
-
+#include "JsonProfile.h"
+#include "JsonRepository.h"
+#include "Reactions/command/CmEmpty.h"
+#include "Reactions/exit/ExFlag.h"
+#include "Reactions/fork/FkArgRegex.h"
+#include "Reactions/fork/FkElse.h"
+#include "Reactions/fork/FkWithName.h"
+#include "Reactions/front/Console.h"
+#include "Reactions/parameter/PrString.h"
+#include "Reactions/reaction/RcExit.h"
+#include "Reactions/reaction/RcFork.h"
+#include "Reactions/reaction/RcGlued.h"
+#include "Reactions/reaction/RcMapped.h"
+#include "Reactions/reaction/RcNothing.h"
+#include "Reactions/reaction/RcNothrow.h"
+#include "Reactions/reaction/RcParameterized.h"
+#include "Reactions/reaction/RcText.h"
+#include "Reqirement.h"
 #include <pubgrub/solve.hpp>
-
 #include <sstream>
-
-auto req(std::string name, pubgrub::interval_set<int> range) {
-    return pubgrub::test::simple_req{name, range};
-}
-
-template <typename... Items>
-auto reqs(Items... t) {
-    return std::vector<Requirement>({t...});
-}
 
 struct explain_handler {
     std::stringstream message;
@@ -64,30 +66,87 @@ struct explain_handler {
     }
 };
 
+class Solution : public RcMapped {
+public:
+    Solution(std::shared_ptr<std::string> profileName, std::shared_ptr<std::string> repositoryName)
+        : RcMapped([profileName, repositoryName]() {
+            auto profile = JsonProfile{std::format("profiles/{}.json", *profileName)};
+            auto repo    = JsonRepository{
+                std::filesystem::path{std::format("repos/{}.json", *repositoryName)}};
+
+            try {
+                auto solution = pubgrub::solve(profile.packages(), repo);
+                auto strings
+                    = solution | std::views::transform([](const auto& package) {
+                          return make<RsText>(std::format("{} : {}\n", package.key, package.range));
+                      });
+                return makeOut<RsGlued>(strings.begin(), strings.end());
+            } catch (const pubgrub::solve_failure_type_t<Requirement>& fail) {
+                explain_handler ex;
+                pubgrub::generate_explaination(fail, ex);
+                return makeOut<RsGlued>(
+                    make<RsText>("Conflict! Explanation:\n"),
+                    make<RsText>(ex.message.view())
+                );
+            }
+        }) {}
+};
+
+class StringProperty : public FkWithName {
+public:
+    StringProperty(
+        std::string_view             name,
+        std::string_view             argName,
+        std::shared_ptr<std::string> propMemory
+    )
+        : FkWithName(
+            name,
+            make<RcFork>(
+                make<FkArgRegex>(
+                    R"(^\s*\S+\s*$)",
+                    make<RcParameterized<std::string>>(
+                        make<PrString>(),
+                        [propMemory](auto value) {
+                            propMemory->assign(value);
+                            return makeOut<RsEmpty>();
+                        }
+                    )
+                ),
+                make<FkArgRegex>(R"(^\s*$)", make<RcMapped>([propMemory]() {
+                                     return makeOut<
+                                         RsGlued>(make<RsText>(*propMemory), make<RsText>("\n"));
+                                 })),
+                make<FkElse>(make<RcGlued>(
+                    make<RcText>("Invalid arguments, expected: "),
+                    make<RcText>(std::string(name)),
+                    make<RcText>(" <"),
+                    make<RcText>(std::string(argName)),
+                    make<RcText>(">\n")
+                ))
+            )
+        ) {}
+
+    StringProperty(std::string_view name, std::shared_ptr<std::string> propMemory)
+        : StringProperty(name, "string", std::move(propMemory)) {}
+};
+
 int main() {
-    auto profile = make<JsonProfile>("profiles/default.json");
-    std::cout << std::format("Profile name: {}\n", profile->name());
-    for (const auto &req : profile->packages()) {
-        std::cout << std::format("Package: {} Range: {}\n", req.key, req.range);
-    }
-    return 0;
+    auto profile = make<std::string>("default");
+    auto repo    = make<std::string>("default");
+    auto flag    = make<ExFlag>();
 
-    auto repo = make<MutableRepository>();
-    repo->add(make<MemoryPackage>("foo", 2));
+    make<Console>(
+        make<RcNothrow>(make<RcFork>(
+            make<FkWithName>("", make<RcNothing>()),
+            make<FkWithName>("exit", make<RcExit>(flag)),
+            make<FkWithName>("solve", make<Solution>(profile, repo)),
+            make<StringProperty>("profile", "name", profile),
+            make<StringProperty>("repo", "name", repo),
+            make<FkElse>(make<RcText>("Unknown command!\n"))
+        )),
+        ">"
+    )
+        ->start(flag);
 
-    auto roots = reqs(req("foo", {1, 2}));
-
-    // expected req("foo", {1, 2})
-    try {
-        auto solution = pubgrub::solve(roots, *repo);
-
-        for (const auto& el : solution) {
-            std::cout << el.key << " : " << el.range << std::endl;
-        }
-    } catch (const pubgrub::solve_failure_type_t<Requirement>& fail) {
-        explain_handler ex;
-        pubgrub::generate_explaination(fail, ex);
-        std::cout << "Conflict! Explanation:" << std::endl;
-        std::cout << ex.message.view() << std::endl;
-    }
+    make<RcNothrow>(make<Solution>(profile, repo))->result(make<CmEmpty>())->print(std::cout);
 }
